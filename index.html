@@ -1,272 +1,111 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>WhatsApp Members OCR — Name & Number Extractor</title>
-  <meta name="description" content="Upload screenshots of WhatsApp group participants, OCR them in-browser and extract Name + Number into CSV. Single-file, privacy-first." />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WhatsApp Group Extractor (OCR)</title>
   <style>
-    :root{--bg:#0b1220;--panel:#0f172a;--muted:#9aa3b2;--text:#f7fafc;--accent:#22c55e;--blue:#60a5fa}
-    *{box-sizing:border-box}
-    body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:radial-gradient(1200px 700px at 10% 0%,#0f1a2f,#0b1220 60%);color:var(--text)}
-    .wrap{max-width:1000px;margin:28px auto;padding:18px}
-    .card{background:linear-gradient(180deg,rgba(8,12,20,.7),rgba(10,14,22,.7));border:1px solid #152034;border-radius:12px;padding:16px}
-    h1{margin:0 0 6px;font-size:22px}
-    .muted{color:var(--muted)}
-    .grid{display:grid;gap:14px}
-    @media(min-width:900px){.grid{grid-template-columns:1fr 420px}}
-    .drop{border:2px dashed #213147;border-radius:10px;padding:18px;text-align:center;background:#071021}
-    input[type=file]{display:none}
-    textarea{width:100%;min-height:120px;background:#061225;color:var(--text);border:1px solid #152034;padding:10px;border-radius:8px}
-    button{padding:10px 12px;border-radius:8px;border:1px solid #233148;background:#071225;color:var(--text);cursor:pointer;margin-right:8px}
-    .btn-primary{background:linear-gradient(135deg,#10b981,#3b82f6);border:none}
-    .btn-danger{background:#2a0f12;border:1px solid #6b1d1d}
-    table{width:100%;border-collapse:collapse;margin-top:10px}
-    th,td{padding:8px;border-bottom:1px solid #132235;text-align:left}
-    .small{font-size:13px}
-    .preview-img{max-width:100%;max-height:220px;border-radius:8px;border:1px solid #233148}
-    .spinner{display:inline-block;width:18px;height:18px;border-radius:50%;border:3px solid rgba(255,255,255,.08);border-top-color:var(--blue);animation:spin .9s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    h1 { color: #333; }
+    input, button { margin: 10px 0; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #f4f4f4; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <h1>WhatsApp Members OCR — Name & Number Extractor</h1>
-      <div class="muted small">Upload screenshots of the group <b>Participants</b> list (or any image with names & numbers). OCR runs in your browser (no upload). The tool extracts name + number pairs and exports CSV.</div>
-    </div><div class="grid" style="margin-top:12px">
-  <section class="card">
-    <div class="drop" id="dropzone">
-      <p style="margin:0 0 8px 0;font-weight:700">Drop image(s) here or choose files</p>
-      <p class="muted small" style="margin:0 0 12px 0">Supported: PNG, JPG, WebP. You can upload multiple screenshots — they will be processed in order.</p>
-      <input id="fileInput" type="file" accept="image/*" multiple />
-      <div style="display:flex;gap:8px;justify-content:center;align-items:center">
-        <label for="fileInput" style="cursor:pointer;padding:8px 12px;border-radius:8px;border:1px solid #233148;background:#081427">Choose images</label>
-        <button id="processBtn" class="btn-primary">Start OCR & Extract</button>
-        <button id="clearBtn" class="btn-danger">Clear</button>
-      </div>
-      <div id="filePreview" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"></div>
-    </div>
+  <h1>WhatsApp Group Members Extractor</h1>
+  <p>Upload a screenshot of your WhatsApp group participants list.</p>
+  
+  <input type="file" id="imageUpload" accept="image/*">
+  <br>
+  <button id="processBtn">Extract Names & Numbers</button>
+  
+  <div id="status"></div>
+  
+  <table id="resultsTable" style="display:none;">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Number</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-    <div style="margin-top:12px">
-      <label class="small muted">OR paste OCR text (if you already copied it):</label>
-      <textarea id="pasteArea" placeholder="Paste recognized text here..."></textarea>
-      <div style="margin-top:8px"><button id="extractFromTextBtn" class="btn-primary">Extract from text</button></div>
-    </div>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+  <script>
+    const imageUpload = document.getElementById("imageUpload");
+    const processBtn = document.getElementById("processBtn");
+    const statusDiv = document.getElementById("status");
+    const resultsTable = document.getElementById("resultsTable");
+    const resultsBody = resultsTable.querySelector("tbody");
 
-  </section>
-
-  <aside class="card">
-    <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <div>
-        <div class="muted small">Results</div>
-        <div style="font-weight:700">Name + Number pairs</div>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button id="copyCsvBtn">Copy CSV</button>
-        <button id="downloadCsvBtn">Download CSV</button>
-      </div>
-    </div>
-
-    <div class="statRow" style="display:flex;gap:8px;margin-bottom:10px">
-      <div style="flex:1;background:#071427;border:1px solid #122635;padding:8px;border-radius:8px"><div class="small muted">Total found</div><div id="totalFound">0</div></div>
-      <div style="flex:1;background:#071427;border:1px solid #122635;padding:8px;border-radius:8px"><div class="small muted">Deduped</div><div id="deduped">0</div></div>
-      <div style="flex:1;background:#071427;border:1px solid #122635;padding:8px;border-radius:8px"><div class="small muted">Invalid</div><div id="invalid">0</div></div>
-    </div>
-
-    <div style="max-height:420px;overflow:auto">
-      <table id="resultsTable"><thead><tr><th>#</th><th>Name</th><th>Number</th></tr></thead><tbody id="resultsBody"><tr><td colspan="3" class="muted">No results yet.</td></tr></tbody></table>
-    </div>
-
-    <p class="muted small" style="margin-top:8px">Tip: For best results, ensure screenshots show the full Participants list (names and numbers). If WhatsApp hides numbers for saved contacts, use screenshots of the participants panel from WhatsApp Web where numbers are visible.</p>
-  </aside>
-</div>
-
-  </div>  <!-- Tesseract.js CDN for in-browser OCR -->  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>  <script>
-    // Utility regex and normalizers
-    const PHONE_RX = /\+?\d[\d\s\-()]{8,20}\d/g;
-    function normalizeNumber(raw){
-      if(!raw) return null;
-      const s = String(raw).trim();
-      const hasPlus = s.startsWith('+');
-      const digits = s.replace(/[^0-9]/g,'');
-      if(digits.length < 10 || digits.length > 15) return null;
-      return (hasPlus ? '+' : '') + digits;
-    }
-    function cleanNameSegment(txt){
-      if(!txt) return '';
-      let t = String(txt).replace(/\u200c|\u200b/g,'');
-      t = t.replace(PHONE_RX,'');
-      t = t.replace(/[(){}<>|•,:=_]/g,' ');
-      t = t.replace(/\s+/g,' ').trim();
-      // Remove trailing roles like (You)
-      t = t.replace(/^you\s*/i,'').replace(/\s*you$/i,'');
-      if(!/[A-Za-z\p{L}]/u.test(t)) return '';
-      return t;
-    }
-
-    // OCR processing
-    const input = document.getElementById('fileInput');
-    const preview = document.getElementById('filePreview');
-    const processBtn = document.getElementById('processBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const resultsBody = document.getElementById('resultsBody');
-    const totalFoundEl = document.getElementById('totalFound');
-    const dedupedEl = document.getElementById('deduped');
-    const invalidEl = document.getElementById('invalid');
-
-    let selectedFiles = [];
-    input.addEventListener('change', e=>{
-      selectedFiles = Array.from(e.target.files || []);
-      renderPreviews(selectedFiles);
-    });
-
-    function renderPreviews(files){
-      preview.innerHTML = '';
-      files.forEach(f=>{
-        const url = URL.createObjectURL(f);
-        const img = document.createElement('img'); img.src = url; img.className='preview-img'; img.title = f.name;
-        preview.appendChild(img);
-      });
-    }
-
-    clearBtn.addEventListener('click', ()=>{
-      selectedFiles = []; input.value=''; preview.innerHTML=''; document.getElementById('pasteArea').value=''; state.rows = []; renderRows([]); totalFoundEl.textContent='0'; dedupedEl.textContent='0'; invalidEl.textContent='0';
-    });
-
-    async function ocrImage(file){
-      const worker = Tesseract.createWorker({ logger: m => { /* optional progress */ } });
-      await worker.load();
-      await worker.loadLanguage('eng');
-      await worker.initialize('eng');
-      const { data: { text } } = await worker.recognize(file);
-      await worker.terminate();
-      return text;
-    }
-
-    async function processFiles(files){
-      if(!files.length) return '';
-      let fullText = '';
-      for(const f of files){
-        const t = await ocrImage(f);
-        fullText += '\n' + t;
-      }
-      return fullText;
-    }
-
-    function extractPairsFromText(raw){
-      const lines = String(raw).split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-      const resultsByNum = new Map();
-      let totalFound = 0, invalid = 0;
-
-      for(const line of lines){
-        const nums = line.match(PHONE_RX) || [];
-        totalFound += nums.length;
-        for(const m of nums){
-          const nrm = normalizeNumber(m);
-          if(!nrm){ invalid++; continue; }
-          const before = line.split(m)[0] || '';
-          const after = line.split(m)[1] || '';
-          let name = cleanNameSegment(before) || cleanNameSegment(after) || 'Unknown';
-          const existing = resultsByNum.get(nrm);
-          if(!existing) resultsByNum.set(nrm, name);
-          else if(existing === 'Unknown' && name !== 'Unknown') resultsByNum.set(nrm, name);
-          else if(name !== 'Unknown' && name.length > existing.length) resultsByNum.set(nrm, name);
-        }
+    processBtn.addEventListener("click", async () => {
+      if (!imageUpload.files.length) {
+        alert("Please upload an image first.");
+        return;
       }
 
-      for(let i=0;i<lines.length-1;i++){
-        const a = lines[i]; const b = lines[i+1];
-        if(!a || !b) continue;
-        const numsB = b.match(PHONE_RX) || [];
-        if(numsB.length && isLikelyName(a)){
-          const nameCand = cleanNameSegment(a) || 'Unknown';
-          for(const m of numsB){
-            const nrm = normalizeNumber(m);
-            if(!nrm){ invalid++; continue; }
-            const existing = resultsByNum.get(nrm);
-            if(!existing || existing === 'Unknown' || nameCand.length > existing.length) resultsByNum.set(nrm, nameCand);
+      statusDiv.textContent = "Processing OCR... Please wait.";
+
+      const file = imageUpload.files[0];
+      const imageUrl = URL.createObjectURL(file);
+
+      try {
+        const { data: { text } } = await Tesseract.recognize(imageUrl, 'eng', {
+          logger: m => {
+            if (m.status === 'recognizing text') {
+              statusDiv.textContent = `OCR Progress: ${Math.round(m.progress * 100)}%`;
+            }
           }
+        });
+
+        const extractedData = parseWhatsAppData(text);
+        displayResults(extractedData);
+        statusDiv.textContent = "Extraction complete!";
+      } catch (err) {
+        console.error(err);
+        statusDiv.textContent = "Error during OCR.";
+      }
+    });
+
+    function parseWhatsAppData(ocrText) {
+      const lines = ocrText.split("\n").map(l => l.trim()).filter(Boolean);
+      const results = [];
+
+      lines.forEach(line => {
+        const numberMatch = line.match(/\+?\d[\d\s-]{7,}/);
+        if (numberMatch) {
+          const number = numberMatch[0].replace(/\s+/g, '');
+          let name = line.replace(numberMatch[0], '').trim();
+          if (!name) name = "Unknown";
+          results.push({ name, number });
         }
-      }
-
-      for(const line of lines){
-        const parts = line.split(/[-–—]/).map(p=>p.trim()).filter(Boolean);
-        if(parts.length>=2){
-          const last = parts[parts.length-1];
-          const numMatch = (last.match(PHONE_RX) || [])[0];
-          if(numMatch){
-            const nrm = normalizeNumber(numMatch);
-            if(!nrm){ invalid++; continue; }
-            const namePart = parts.slice(0,parts.length-1).join(' ');
-            const name = cleanNameSegment(namePart) || 'Unknown';
-            const existing = resultsByNum.get(nrm);
-            if(!existing) resultsByNum.set(nrm, name);
-            else if(existing==='Unknown' && name!=='Unknown') resultsByNum.set(nrm, name);
-          }
-        }
-      }
-
-      const seenOrder = [];
-      for(const line of lines){
-        const nums = line.match(PHONE_RX) || [];
-        for(const m of nums){ const nrm = normalizeNumber(m); if(nrm && !seenOrder.includes(nrm)) seenOrder.push(nrm); }
-      }
-      for(const k of resultsByNum.keys()) if(!seenOrder.includes(k)) seenOrder.push(k);
-
-      const rows = seenOrder.map(n=>({ name: resultsByNum.get(n) || 'Unknown', number: n }));
-      const deduped = rows.length;
-      const dupes = Math.max(0, totalFound - invalid - deduped);
-      return { rows, totalFound, invalid, dupes };
-    }
-
-    function isLikelyName(line){
-      const cleaned = cleanNameSegment(line);
-      return cleaned && cleaned.length>=2 && cleaned.length<=60;
-    }
-
-    function renderRows(rows){
-      resultsBody.innerHTML='';
-      if(!rows.length){ resultsBody.innerHTML='<tr><td colspan="3" class="muted">No data yet.</td></tr>'; return; }
-      rows.forEach((r,i)=>{
-        const tr = document.createElement('tr'); tr.innerHTML=`<td>${i+1}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.number)}</td>`; resultsBody.appendChild(tr);
       });
+
+      return results;
     }
 
-    function escapeHtml(s){ return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
-
-    const state = { rows: [] };
-
-    processBtn.addEventListener('click', async ()=>{
-      if(selectedFiles.length===0){ alert('Please choose one or more images or paste text first.'); return; }
-      processBtn.disabled=true; processBtn.textContent='Processing...'; const spinner = document.createElement('span'); spinner.className='spinner'; processBtn.prepend(spinner);
-      try{
-        const text = await processFiles(selectedFiles);
-        document.getElementById('pasteArea').value = text;
-        const { rows, totalFound, invalid, dupes } = extractPairsFromText(text);
-        state.rows = rows; renderRows(rows);
-        totalFoundEl.textContent = totalFound; dedupedEl.textContent = rows.length; invalidEl.textContent = invalid;
-      }catch(err){ console.error(err); alert('OCR failed: '+err.message); }
-      processBtn.disabled=false; processBtn.textContent='Start OCR & Extract';
-    });
-
-    document.getElementById('extractFromTextBtn').addEventListener('click', ()=>{
-      const txt = document.getElementById('pasteArea').value || '';
-      if(!txt.trim()){ alert('Paste the text or upload images first.'); return; }
-      const { rows, totalFound, invalid, dupes } = extractPairsFromText(txt);
-      state.rows = rows; renderRows(rows); totalFoundEl.textContent = totalFound; dedupedEl.textContent = rows.length; invalidEl.textContent = invalid;
-    });
-
-    document.getElementById('downloadCsvBtn').addEventListener('click', ()=>{
-      if(!state.rows.length){ alert('No data to download'); return; }
-      const csv = 'S.No,Name,Number\n' + state.rows.map((r,i)=>`${i+1},"${r.name.replace(/"/g,'""')}","${r.number.replace(/"/g,'""')}"`).join('\n');
-      const blob = new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='whatsapp_group_members.csv'; document.body.appendChild(a); a.click(); a.remove();
-    });
-
-    document.getElementById('copyCsvBtn').addEventListener('click', async ()=>{
-      if(!state.rows.length) return alert('No data to copy');
-      const csv = 'S.No,Name,Number\n' + state.rows.map((r,i)=>`${i+1},"${r.name.replace(/"/g,'""')}","${r.number.replace(/"/g,'""')}"`).join('\n');
-      try{ await navigator.clipboard.writeText(csv); alert('CSV copied to clipboard'); } catch(e){ alert('Copy failed'); }
-    });
-
-  </script></body>
+    function displayResults(data) {
+      resultsBody.innerHTML = "";
+      if (data.length) {
+        resultsTable.style.display = "table";
+        data.forEach(row => {
+          const tr = document.createElement("tr");
+          const tdName = document.createElement("td");
+          const tdNumber = document.createElement("td");
+          tdName.textContent = row.name;
+          tdNumber.textContent = row.number;
+          tr.appendChild(tdName);
+          tr.appendChild(tdNumber);
+          resultsBody.appendChild(tr);
+        });
+      } else {
+        resultsTable.style.display = "none";
+        alert("No numbers found in the image.");
+      }
+    }
+  </script>
+</body>
 </html>
