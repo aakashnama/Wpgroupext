@@ -2,114 +2,264 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WhatsApp Name & Number Extractor</title>
+  <title>WhatsApp Group Members – Name & Number Extractor</title>
+  <meta name="description" content="Paste your WhatsApp group PARTICIPANTS list (from WhatsApp Web or OCR text) to extract Name + Number. All in-browser, single-file, Vercel-ready." />
   <style>
-    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
-    .container { max-width: 900px; margin: 30px auto; background: #fff; padding: 20px; border-radius: 8px; }
-    h1 { margin-top: 0; }
-    textarea { width: 100%; height: 150px; padding: 10px; margin-top: 10px; border-radius: 4px; border: 1px solid #ccc; }
-    button { margin-top: 10px; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
-    .btn-primary { background: #28a745; color: white; }
-    .btn-secondary { background: #007bff; color: white; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    table, th, td { border: 1px solid #ccc; }
-    th, td { padding: 8px; text-align: left; }
+    :root {
+      --bg:#0b1220; --panel:#111827; --muted:#9aa3b2; --text:#f7fafc; --ring:#334155; --accent:#22c55e; --blue:#60a5fa; --danger:#ef4444;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial;background:radial-gradient(1200px 700px at 10% 0%, #0f1a2f, #0b1220 60%);color:var(--text)}
+    .container{max-width:1000px;margin:0 auto;padding:24px}
+    .card{background:#0f172aee;border:1px solid #1f2a44;border-radius:16px;padding:18px;box-shadow:0 10px 30px rgba(2,8,23,.35)}
+    h1{margin:0 0 6px 0;font-size:clamp(22px,3vw,32px)}
+    .muted{color:var(--muted)}
+    .grid{display:grid;gap:16px}
+    @media(min-width:900px){.grid{grid-template-columns:1.2fr .8fr}}
+    textarea{width:100%;min-height:160px;background:#0b1324;color:var(--text);border:1px solid #1f2a44;border-radius:12px;padding:12px;resize:vertical;outline:none}
+    textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px rgba(96,165,250,.15)}
+    .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+    button{border:1px solid #233148;background:#0f172a;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:600}
+    button:hover{border-color:var(--blue);box-shadow:0 0 0 4px rgba(96,165,250,.15)}
+    .btn-accent{background:linear-gradient(135deg,#10b981,#3b82f6);border:none}
+    .btn-danger{background:#1a0f12;border:1px solid #7f1d1d;color:#fecaca}
+    .small{font-size:12px}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{border-bottom:1px solid #1f2a44;padding:10px 12px;text-align:left}
+    .stat{display:flex;justify-content:space-between;gap:16px;background:#0c1426;border:1px solid #1f2a44;padding:12px 14px;border-radius:12px}
+    .badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#10223a;border:1px solid #1f2a44;color:var(--muted);font-size:12px}
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>WhatsApp Name & Number Extractor</h1>
-    <p>Paste your exported chat or participant list below:</p>
-    <textarea id="pasteArea" placeholder="Paste exported chat or participant list here..."></textarea>
-    <br>
-    <button class="btn-primary" onclick="extractData()">Extract Data</button>
-    <button class="btn-secondary" onclick="downloadCSV()">Download CSV</button>
-    <table id="resultsTable">
-      <thead>
-        <tr><th>S.No</th><th>Name</th><th>Number</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-  <script>
-    function normalizeNumber(raw) {
-      raw = raw.trim();
-      const hasPlus = raw.startsWith('+');
-      const digits = raw.replace(/[^0-9]/g, '');
-      if (!digits) return null;
-      let normalized = (hasPlus ? '+' : '') + digits;
-      if (digits.length < 10 || digits.length > 15) return null;
-      return normalized;
-    }function extractData() {
-  const text = document.getElementById('pasteArea').value;
-  const lines = text.split(/\n/);
-  const results = [];
-  const seen = new Set();
+    <div class="card" style="margin-bottom:16px">
+      <h1>WhatsApp Group Members – Name & Number</h1>
+      <div class="muted">Paste the <b>Participants list</b> text here (recommended). If a line has only a number, the name will be set to <b>Unknown</b>. Works fully in your browser.</div>
+    </div><div class="grid">
+  <section class="card">
+    <div class="muted small" style="margin-bottom:8px">
+      <b>How to get participants text</b>: On <b>WhatsApp Web</b> → open your group → click the group name → scroll to load all members → try selecting that list and copy. If selection isn't allowed, take screenshots of the list and use <b>Google Lens / OCR</b> to copy text, then paste it here.
+    </div>
+    <textarea id="pasteArea" placeholder="Example formats supported:\nRohan – +91 98765 43210\n+91 98765 43210 (Rohan)\nRohan\n+91 98765 43210\nAnita Sharma - 98765-43210\n+44 7700 900123\n(You) Rahul  |  +1 (202) 555-0175"></textarea>
+    <div class="actions">
+      <button id="extractBtn" class="btn-accent">Extract Name + Number</button>
+      <button id="copyCsvBtn">Copy CSV</button>
+      <button id="downloadCsvBtn">Download CSV</button>
+      <button id="clearBtn" class="btn-danger">Clear</button>
+      <button id="sampleBtn">Try sample</button>
+    </div>
+  </section>
 
-  lines.forEach(line => {
-    // Try WhatsApp chat format: "date - name: message"
-    const match = line.match(/^[^\-]+ - ([^:]+):/);
-    if (match) {
-      let namePart = match[1].trim();
-      let numberPart = normalizeNumber(namePart);
-      let name = numberPart ? '' : namePart;
-      let number = numberPart || '';
-      if (!number && /\+?\d[\d\s\-()]{8,20}\d/.test(line)) {
-        const numMatch = line.match(/\+?\d[\d\s\-()]{8,20}\d/);
-        if (numMatch) number = normalizeNumber(numMatch[0]) || '';
+  <aside class="card">
+    <div class="stat"><span>Total numbers detected</span><b id="count">0</b></div>
+    <div class="stat" style="margin-top:10px"><span>Duplicates removed</span><b id="dupes">0</b></div>
+    <div class="stat" style="margin-top:10px"><span>Invalid filtered</span><b id="invalid">0</b></div>
+    <div style="margin-top:16px">
+      <span class="badge">Preview</span>
+      <table id="resultsTable" style="margin-top:8px">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Number</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody">
+          <tr><td colspan="3" class="muted">No data yet.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted small" style="margin-top:10px">Note: Chat export often hides numbers for saved contacts. To get numbers, paste the Participants list text or OCR output.</p>
+  </aside>
+</div>
+
+<p class="muted small" style="margin-top:14px;text-align:center">Privacy-friendly: nothing uploads anywhere • Single HTML file • Perfect for Vercel/GitHub Pages</p>
+
+  </div>  <script>
+    // ---- Phone detection & normalization ----
+    // Avoid lookbehind for Safari compatibility
+    const PHONE_RX = /\+?\d[\d\s\-()]{8,20}\d/g; // loose match; we'll validate by length after digit-stripping
+
+    function normalizeNumber(raw){
+      if(!raw) return null;
+      raw = String(raw).trim();
+      const hasPlus = raw.startsWith('+');
+      const digits = raw.replace(/[^0-9]/g,'');
+      if(!digits) return null;
+      // Accept 10..15 digit numbers (E.164 max 15)
+      if(digits.length < 10 || digits.length > 15) return null;
+      return (hasPlus ? '+' : '') + digits;
+    }
+
+    function cleanName(txt){
+      if(!txt) return '';
+      // Remove the number-ish bits and common wrappers
+      let t = txt
+        .replace(PHONE_RX,'')
+        .replace(/[(){}]/g,' ')
+        .replace(/[|•,:=_]/g,' ')
+        .replace(/[\-–—]+/g,' ')
+        .replace(/\b(admin|you|owner|participant|participants)\b/ig,' ')
+        .replace(/\s+/g,' ') // collapse spaces
+        .trim();
+      // Keep letters/dots/apostrophes/& spaces largely
+      t = t.replace(/[^\p{L}\p{M}\d'.\s]/gu,'').replace(/\s+/g,' ').trim();
+      return t;
+    }
+
+    function isLikelyNameLine(line){
+      const t = cleanName(line);
+      // A likely name line if letters present and not too long
+      return /[\p{L}]/u.test(t) && t.length >= 2 && t.length <= 60;
+    }
+
+    function extractFromLine(line){
+      const matches = line.match(PHONE_RX) || [];
+      const pairs = [];
+      if(matches.length){
+        // For each number in the line, try to bind a nearby name fragment
+        for(const m of matches){
+          const nrm = normalizeNumber(m);
+          if(!nrm) continue;
+          const parts = line.split(m);
+          let nameCand = '';
+          // Prefer the left side (common: "Name – +91...")
+          if(parts[0]) nameCand = cleanName(parts[0]);
+          if(!nameCand && parts[1]) nameCand = cleanName(parts[1]);
+          const name = nameCand && /[\p{L}]/u.test(nameCand) ? nameCand : 'Unknown';
+          pairs.push({ name, number: nrm });
+        }
       }
-      const key = name + '|' + number;
-      if (!seen.has(key) && (name || number)) {
-        seen.add(key);
-        results.push({ name, number });
-      }
-    } else {
-      // Try participant list style: Name – Number
-      const parts = line.split(/[-–]/);
-      if (parts.length >= 2) {
-        const namePart = parts[0].trim();
-        const numCandidate = normalizeNumber(parts[1]);
-        if (numCandidate) {
-          const key = namePart + '|' + numCandidate;
-          if (!seen.has(key)) {
-            seen.add(key);
-            results.push({ name: namePart, number: numCandidate });
+      return pairs;
+    }
+
+    function extractPairs(raw){
+      const lines = String(raw).replace(/\u200c|\u200b/g,'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+      const resultsByNum = new Map();
+      let totalFound = 0, invalid = 0;
+
+      // Pass 1: same-line number + name patterns
+      for(const line of lines){
+        const nums = (line.match(PHONE_RX) || []);
+        totalFound += nums.length;
+        for(const m of nums){
+          const nrm = normalizeNumber(m);
+          if(!nrm){ invalid++; continue; }
+          const pairs = extractFromLine(line).filter(p=>p.number===nrm);
+          let name = (pairs[0]?.name) || 'Unknown';
+          // Dedupe: prefer non-Unknown, longer names
+          const existing = resultsByNum.get(nrm);
+          if(!existing){
+            resultsByNum.set(nrm, name);
+          } else {
+            if(existing === 'Unknown' && name !== 'Unknown') resultsByNum.set(nrm, name);
+            else if(name !== 'Unknown' && name.length > existing.length) resultsByNum.set(nrm, name);
           }
         }
       }
+
+      // Pass 2: two-line pattern (Name on one line, number on next)
+      for(let i=0;i<lines.length-1;i++){
+        const line = lines[i];
+        const next = lines[i+1];
+        const numsNext = next.match(PHONE_RX) || [];
+        if(!numsNext.length) continue;
+        if(isLikelyNameLine(line)){
+          const nameCand = cleanName(line);
+          for(const m of numsNext){
+            const nrm = normalizeNumber(m);
+            if(!nrm) { invalid++; continue; }
+            const existing = resultsByNum.get(nrm);
+            if(!existing || existing === 'Unknown' || (nameCand && nameCand.length > existing.length)){
+              resultsByNum.set(nrm, nameCand || 'Unknown');
+            }
+          }
+        }
+      }
+
+      // Build final rows, stable order by first appearance in text
+      const seenOrder = [];
+      for(const line of lines){
+        const nums = line.match(PHONE_RX) || [];
+        for(const m of nums){
+          const nrm = normalizeNumber(m);
+          if(nrm && !seenOrder.includes(nrm)) seenOrder.push(nrm);
+        }
+      }
+      const rows = seenOrder.map((num)=>({ name: resultsByNum.get(num) || 'Unknown', number: num }));
+      const dupes = Math.max(0, totalFound - invalid - rows.length);
+      return { rows, totalFound, invalid, dupes };
     }
-  });
 
-  const tbody = document.querySelector('#resultsTable tbody');
-  tbody.innerHTML = '';
-  results.forEach((r, i) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${i+1}</td><td>${r.name}</td><td>${r.number}</td>`;
-    tbody.appendChild(tr);
-  });
+    // ---- UI ----
+    const $ = (id)=>document.getElementById(id);
 
-  window.extractedResults = results;
-}
+    function render(rows){
+      const tbody = $("resultsBody");
+      tbody.innerHTML = '';
+      if(!rows.length){
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 3; td.className = 'muted'; td.textContent = 'No data yet.';
+        tr.appendChild(td); tbody.appendChild(tr); return;
+      }
+      rows.forEach((r,i)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${i+1}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.number)}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
 
-function downloadCSV() {
-  if (!window.extractedResults || !window.extractedResults.length) {
-    alert('No data to download.');
-    return;
-  }
-  let csv = 'S.No,Name,Number\n';
-  window.extractedResults.forEach((r, i) => {
-    csv += `${i+1},"${r.name}","${r.number}"\n`;
-  });
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'whatsapp_names_numbers.csv';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-}
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+    }
 
-  </script>
-</body>
+    function toCSV(rows){
+      const header = 'S.No,Name,Number\n';
+      const lines = rows.map((r,i)=>`${i+1},"${String(r.name).replace(/"/g,'""')}","${String(r.number).replace(/"/g,'""')}"`).join('\n');
+      return header + lines + (rows.length?'\n':'');
+    }
+
+    const state = { rows: [] };
+
+    $("extractBtn").addEventListener('click',()=>{
+      const raw = $("pasteArea").value || '';
+      if(!raw.trim()) { alert('Paste participants text first.'); return; }
+      const { rows, totalFound, invalid, dupes } = extractPairs(raw);
+      state.rows = rows;
+      $("count").textContent = totalFound;
+      $("invalid").textContent = invalid;
+      $("dupes").textContent = dupes;
+      render(rows);
+    });
+
+    $("copyCsvBtn").addEventListener('click',async()=>{
+      if(!state.rows.length) return alert('No results to copy.');
+      const csv = toCSV(state.rows);
+      try{ await navigator.clipboard.writeText(csv); alert('CSV copied to clipboard.'); }
+      catch{ alert('Copy failed. Use Download CSV.'); }
+    });
+
+    $("downloadCsvBtn").addEventListener('click',()=>{
+      if(!state.rows.length) return alert('No results to download.');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([toCSV(state.rows)],{type:'text/csv'}));
+      a.download = 'whatsapp_group_members.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+    });
+
+    $("clearBtn").addEventListener('click',()=>{
+      $("pasteArea").value = '';
+      state.rows = []; render([]);
+      $("count").textContent = '0';
+      $("invalid").textContent = '0';
+      $("dupes").textContent = '0';
+    });
+
+    $("sampleBtn").addEventListener('click',()=>{
+      const sample = `Rohan – +91 98765 43210\n+91 98765 43211 (Anita)\n(You) Rahul  |  +1 (202) 555-0175\n+44 7700 900123\nAarav\n98765-43212\nNeha Gupta - 080 1234 5678`;
+      $("pasteArea").value = sample; $("extractBtn").click();
+    });
+  </script></body>
 </html>
