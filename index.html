@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WhatsApp Number Extractor</title>
+  <meta name="description" content="Extract unique phone numbers from exported WhatsApp group chats (.txt) entirely in your browser. No uploads, privacy-safe." />
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #121a2a;
+      --muted: #97a3b6;
+      --text: #f5f7fb;
+      --accent: #6ee7b7;
+      --accent-2: #60a5fa;
+      --danger: #ef4444;
+      --ring: #334155;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 700px at 10% 0%, #0f1a2f, #0b1220 60%);
+      color: var(--text);
+    }
+    .container { max-width: 1000px; margin: 0 auto; padding: 24px; }
+    .header { display:flex; gap: 14px; align-items: center; }
+    .logo {
+      width: 44px; height: 44px; border-radius: 12px; display:grid; place-items:center;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #0b1220; font-weight: 900; font-size: 22px; box-shadow: 0 10px 30px rgba(96,165,250,.25);
+    }
+    h1 { font-size: clamp(22px, 3vw, 32px); margin: 0; letter-spacing: 0.2px; }
+    .muted { color: var(--muted); }
+
+    .card { background: rgba(18,26,42,.9); border: 1px solid #1e293b; border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(2,8,23,.35); }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 900px) { .grid { grid-template-columns: 1.2fr .8fr; } }
+
+    .dropzone {
+      border: 2px dashed #334155; border-radius: 14px; padding: 24px; text-align: center; transition: .2s ease; background: #0e1728;
+    }
+    .dropzone.dragover { border-color: var(--accent-2); background: #0d1a2d; box-shadow: inset 0 0 0 9999px rgba(96,165,250,.05); }
+    .actions { display:flex; flex-wrap: wrap; gap: 10px; align-items:center; }
+    button, .btn {
+      border: 1px solid #233148; background: #0f172a; color: var(--text); padding: 10px 14px; border-radius: 12px; cursor: pointer; font-weight: 600;
+      transition: .15s ease; letter-spacing: .2px;
+    }
+    button:hover, .btn:hover { border-color: var(--accent-2); box-shadow: 0 0 0 4px rgba(96,165,250,.15); }
+    .btn-accent { background: linear-gradient(135deg, #10b981, #3b82f6); border: none; }
+    .btn-danger { background: #1a0f12; border: 1px solid #7f1d1d; color: #fecaca; }
+
+    textarea, input[type="text"] {
+      width: 100%; background: #0b1324; color: var(--text); border: 1px solid #1f2a44; border-radius: 12px; padding: 12px; font-family: inherit;
+      min-height: 120px; resize: vertical; outline: none; transition: .15s ease; 
+    }
+    textarea:focus, input[type="text"]:focus { border-color: var(--accent-2); box-shadow: 0 0 0 4px rgba(96,165,250,.15); }
+
+    .stat { display:flex; justify-content: space-between; gap: 16px; background: #0c1426; border: 1px solid #1f2a44; padding: 12px 14px; border-radius: 12px; }
+    .table { width: 100%; border-collapse: collapse; }
+    .table th, .table td { padding: 10px 12px; border-bottom: 1px solid #1f2a44; text-align: left; }
+    .badge { display:inline-block; padding: 4px 8px; border-radius: 999px; background:#10223a; border:1px solid #1f2a44; color: var(--muted); font-size: 12px; }
+    .footer { color: var(--muted); font-size: 13px; text-align: center; margin-top: 24px; }
+    .hidden { display:none; }
+    .small { font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">WA</div>
+      <div>
+        <h1>WhatsApp Number Extractor</h1>
+        <div class="muted">Pick your exported <b>.txt</b> chat or paste text below. All processing happens in your browser.</div>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:18px;">
+      <section class="card">
+        <div class="dropzone" id="dropzone">
+          <input id="fileInput" type="file" accept=".txt" class="hidden" />
+          <p style="margin:0 0 8px 0; font-weight:700;">Drop your WhatsApp <code>.txt</code> here</p>
+          <p class="muted small" style="margin:0 0 14px 0;">WhatsApp ➜ Group ➜ ⋮ ➜ <b>Export chat</b> ➜ <b>Without media</b></p>
+          <div class="actions">
+            <label for="fileInput" class="btn">Choose .txt file</label>
+            <button id="trySample" type="button">Try sample</button>
+            <button id="clearInput" type="button" class="btn-danger">Clear</button>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;">
+          <label class="small muted">Or paste content:</label>
+          <textarea id="pasteArea" placeholder="Paste exported chat content or participant list..."></textarea>
+          <div class="actions" style="margin-top:10px;">
+            <button id="extractBtn" class="btn-accent">Extract Numbers</button>
+            <button id="copyBtn" type="button">Copy Results</button>
+            <button id="downloadCsvBtn" type="button">Download CSV</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="card">
+        <div class="stat"><span>Total numbers found</span><b id="count">0</b></div>
+        <div class="stat" style="margin-top:10px;"><span>Duplicates removed</span><b id="dupes">0</b></div>
+        <div class="stat" style="margin-top:10px;"><span>Invalid/short filtered</span><b id="invalid">0</b></div>
+        <div style="margin-top:16px;">
+          <span class="badge">Preview</span>
+          <table class="table" id="resultsTable" style="margin-top:8px;">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Original</th>
+                <th>Normalized</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody">
+              <tr><td colspan="3" class="muted">No data yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small muted" style="margin-top:10px;">Normalization strips spaces and dashes. If a number has 10–15 digits (optionally starting with +), it's kept.</p>
+      </aside>
+    </div>
+
+    <p class="footer">Privacy-friendly: files never leave your device • Tip: You can also copy the participant list from WhatsApp Web ➜ Group Info and paste it here.</p>
+  </div>
+
+  <script>
+    // ===== Utilities =====
+    const $ = (id) => document.getElementById(id);
+
+    // Match phone-like strings: optional +, digits, spaces, dashes, parentheses
+    // Then we normalize by removing non-digits except a single leading +.
+    const PHONE_REGEX = /(?<!\w)(?:\+?\d[\d\s\-()]{8,20}\d)(?!\w)/g;
+
+    function normalizeNumber(raw) {
+      raw = raw.trim();
+      // Keep leading + if present, then digits
+      const hasPlus = raw.startsWith('+');
+      const digits = raw.replace(/[^0-9]/g, '');
+      if (!digits) return null;
+      let normalized = (hasPlus ? '+' : '') + digits;
+      // Filter out too short/too long
+      // Accept common phone lengths: 10 to 15 digits (E.164 max is 15)
+      const len = digits.length;
+      if (len < 10 || len > 15) return null;
+      return normalized;
+    }
+
+    function extractNumbers(text) {
+      const matches = text.match(PHONE_REGEX) || [];
+      const results = [];
+      const seen = new Set();
+      let invalid = 0;
+      for (const m of matches) {
+        const norm = normalizeNumber(m);
+        if (!norm) { invalid++; continue; }
+        if (seen.has(norm)) continue;
+        seen.add(norm);
+        results.push({ original: m.trim(), normalized: norm });
+      }
+      return { results, totalFound: matches.length, invalid };
+    }
+
+    function renderTable(rows) {
+      const tbody = $("resultsBody");
+      tbody.innerHTML = "";
+      if (!rows.length) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 3; td.className = 'muted'; td.textContent = 'No data yet.';
+        tr.appendChild(td); tbody.appendChild(tr); return;
+      }
+      rows.forEach((r, i) => {
+        const tr = document.createElement('tr');
+        const td1 = document.createElement('td'); td1.textContent = i + 1;
+        const td2 = document.createElement('td'); td2.textContent = r.original;
+        const td3 = document.createElement('td'); td3.textContent = r.normalized;
+        tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+        tbody.appendChild(tr);
+      });
+    }
+
+    function toCSV(rows) {
+      const header = ['S.No','Original','Normalized'];
+      const lines = [header.join(',')];
+      rows.forEach((r, i) => {
+        // Escape commas and quotes
+        const o = '"' + r.original.replace(/"/g,'""') + '"';
+        const n = '"' + r.normalized.replace(/"/g,'""') + '"';
+        lines.push([i+1, o, n].join(','));
+      });
+      return lines.join('\n');
+    }
+
+    function download(filename, content, type = 'text/csv') {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+      a.remove(); URL.revokeObjectURL(url);
+    }
+
+    // ===== UI Handlers =====
+    const state = { rows: [], lastText: '' };
+
+    function handleExtract(text) {
+      const { results, totalFound, invalid } = extractNumbers(text);
+      state.rows = results; state.lastText = text;
+      $("count").textContent = totalFound;
+      $("dupes").textContent = Math.max(0, totalFound - invalid - results.length);
+      $("invalid").textContent = invalid;
+      renderTable(results);
+    }
+
+    $("extractBtn").addEventListener('click', () => {
+      const text = $("pasteArea").value.trim();
+      if (!text) { alert('Please paste chat text or load a file first.'); return; }
+      handleExtract(text);
+    });
+
+    $("copyBtn").addEventListener('click', async () => {
+      if (!state.rows.length) { alert('No results to copy.'); return; }
+      const csv = toCSV(state.rows);
+      try {
+        await navigator.clipboard.writeText(csv);
+        alert('CSV copied to clipboard!');
+      } catch {
+        alert('Copy failed. You can still download the CSV.');
+      }
+    });
+
+    $("downloadCsvBtn").addEventListener('click', () => {
+      if (!state.rows.length) { alert('No results to download.'); return; }
+      const csv = toCSV(state.rows);
+      download('whatsapp_group_numbers.csv', csv, 'text/csv');
+    });
+
+    $("trySample").addEventListener('click', () => {
+      const sample = `12/08/2025, 9:22 pm - +91 98765 43210: Hello!\n12/08/2025, 9:23 pm - Rohan: See you\n12/08/2025, 9:25 pm - +44 7700 900123: Thanks!\n12/08/2025, 9:26 pm - +1 (202) 555-0175: ok\n12/08/2025, 9:27 pm - Me: Great\nParticipants: +91-98765-43210, +1 202 555 0175, (020) 1234 5678`;
+      $("pasteArea").value = sample;
+      handleExtract(sample);
+    });
+
+    $("clearInput").addEventListener('click', () => {
+      $("pasteArea").value = '';
+      state.rows = []; state.lastText = '';
+      $("count").textContent = '0';
+      $("dupes").textContent = '0';
+      $("invalid").textContent = '0';
+      renderTable([]);
+    });
+
+    // Drag & drop
+    const dz = $("dropzone");
+    dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('dragover'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+    dz.addEventListener('drop', (e) => {
+      e.preventDefault(); dz.classList.remove('dragover');
+      const file = e.dataTransfer.files?.[0];
+      if (!file) return; if (!file.name.endsWith('.txt')) { alert('Please drop a .txt file'); return; }
+      const reader = new FileReader();
+      reader.onload = () => { $("pasteArea").value = reader.result; handleExtract(String(reader.result)); };
+      reader.readAsText(file);
+    });
+
+    $("fileInput").addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return; if (!file.name.endsWith('.txt')) { alert('Please choose a .txt file'); return; }
+      const reader = new FileReader();
+      reader.onload = () => { $("pasteArea").value = reader.result; handleExtract(String(reader.result)); };
+      reader.readAsText(file);
+    });
+  </script>
+</body>
+</html>
